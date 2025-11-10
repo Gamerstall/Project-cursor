@@ -5,6 +5,7 @@ import { BeamInput, CalculationResult } from '@/types/beam';
 import { calculateBeamStress } from '@/lib/calculations';
 import StandardSections from './StandardSections';
 import ResultDisplay from './ResultDisplay';
+import BeamVisualization from './BeamVisualization';
 
 export default function BeamCalculator() {
   const [input, setInput] = useState<BeamInput>({
@@ -29,7 +30,7 @@ export default function BeamCalculator() {
     }
   }, [input]);
 
-  const handleInputChange = (field: keyof BeamInput, value: string | number) => {
+  const handleInputChange = <K extends keyof BeamInput>(field: K, value: BeamInput[K]) => {
     setInput((prev) => ({
       ...prev,
       [field]: value,
@@ -245,6 +246,12 @@ export default function BeamCalculator() {
 
         {/* Results Display */}
         <ResultDisplay result={result} />
+        <BeamVisualization
+          spanLength={input.spanLength}
+          units={input.units}
+          load={input.load}
+          result={result}
+        />
       </div>
     </div>
   );

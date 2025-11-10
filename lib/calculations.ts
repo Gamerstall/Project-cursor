@@ -1,4 +1,4 @@
-import { BeamInput, CalculationResult, BeamSection } from '@/types/beam';
+import { BeamInput, CalculationResult, BeamSection, DeflectionPoint } from '@/types/beam';
 import { getSectionByName } from './beamSections';
 
 /**
@@ -44,11 +44,88 @@ export function calculateBendingStress(
 /**
  * Main calculation function for beam stress
  */
+function convertSpanToBaseUnits(spanLength: number, units: 'metric' | 'imperial'): number {
+  return units === 'imperial' ? spanLength * 12 : spanLength; // ft -> in for imperial
+}
+
+function calculateDeflectionProfile(
+  load: number,
+  spanLength: number,
+  modulusOfElasticity: number,
+  momentOfInertia: number,
+  units: 'metric' | 'imperial',
+  segments = 40
+): { maxDeflection: number; deflectionPoints: DeflectionPoint[] } {
+  const deflectionPoints: DeflectionPoint[] = [];
+
+  if (segments < 2) {
+    segments = 2;
+  }
+
+  if (load <= 0 || spanLength <= 0 || modulusOfElasticity <= 0 || momentOfInertia <= 0) {
+    for (let i = 0; i <= segments; i++) {
+      const position = i / segments;
+      deflectionPoints.push({ position, deflection: 0 });
+    }
+    return {
+      maxDeflection: 0,
+      deflectionPoints,
+    };
+  }
+
+  const spanBase = convertSpanToBaseUnits(spanLength, units);
+  const effectiveLoad = load;
+  const EI = modulusOfElasticity * momentOfInertia;
+  const halfSpan = spanBase / 2;
+
+  for (let i = 0; i <= segments; i++) {
+    const position = i / segments;
+    const x = position * spanBase;
+    const localX = x <= halfSpan ? x : spanBase - x;
+    const innerTerm = (3 * Math.pow(spanBase, 2)) / 4 - Math.pow(localX, 2);
+    const deflection = (effectiveLoad * localX * innerTerm) / (48 * EI);
+    deflectionPoints.push({ position, deflection });
+  }
+
+  const maxDeflection = (effectiveLoad * Math.pow(spanBase, 3)) / (192 * EI);
+
+  return {
+    maxDeflection,
+    deflectionPoints,
+  };
+}
+
+export function formatDeflection(deflection: number, units: 'metric' | 'imperial'): string {
+  const absValue = Math.abs(deflection);
+
+  if (units === 'metric') {
+    if (absValue >= 1) {
+      return `${deflection.toFixed(3)} m`;
+    }
+    if (absValue >= 1e-3) {
+      return `${(deflection * 1e3).toFixed(2)} mm`;
+    }
+    return `${(deflection * 1e6).toFixed(1)} µm`;
+  }
+
+  // Imperial units (inches)
+  if (absValue >= 1) {
+    return `${deflection.toFixed(3)} in`;
+  }
+  if (absValue >= 0.01) {
+    return `${deflection.toFixed(3)} in`;
+  }
+  return `${(deflection * 1000).toFixed(1)} mils`;
+}
+
 export function calculateBeamStress(input: BeamInput): CalculationResult {
   const result: CalculationResult = {
     bendingMoment: 0,
     bendingStress: 0,
     maxBendingStress: 0,
+    maxDeflection: 0,
+    deflectionPoints: [],
+    deflectionUnits: input.units === 'metric' ? 'm' : 'in',
     units: input.units,
     isValid: false,
   };
@@ -112,6 +189,17 @@ export function calculateBeamStress(input: BeamInput): CalculationResult {
   const stress = calculateBendingStress(moment, c, momentOfInertia);
   result.bendingStress = stress;
   result.maxBendingStress = Math.abs(stress);
+
+  const { maxDeflection, deflectionPoints } = calculateDeflectionProfile(
+    input.load,
+    input.spanLength,
+    input.modulusOfElasticity,
+    momentOfInertia,
+    input.units
+  );
+
+  result.maxDeflection = maxDeflection;
+  result.deflectionPoints = deflectionPoints;
   result.isValid = true;
 
   return result;

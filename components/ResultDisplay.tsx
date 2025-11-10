@@ -1,7 +1,7 @@
 'use client';
 
 import { CalculationResult } from '@/types/beam';
-import { formatStress, formatMoment } from '@/lib/calculations';
+import { formatStress, formatMoment, formatDeflection } from '@/lib/calculations';
 
 interface ResultDisplayProps {
   result: CalculationResult | null;
@@ -35,6 +35,12 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
           <div className="text-sm text-gray-600 mb-1">Maximum Bending Stress</div>
           <div className="text-3xl font-bold text-red-600">
             {formatStress(result.maxBendingStress, result.units)}
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-md shadow-sm">
+          <div className="text-sm text-gray-600 mb-1">Maximum Deflection</div>
+          <div className="text-2xl font-bold text-emerald-600">
+            {formatDeflection(result.maxDeflection, result.units)}
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-300">

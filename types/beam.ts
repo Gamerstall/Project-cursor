@@ -27,10 +27,18 @@ export interface MaterialProperties {
   units: 'metric' | 'imperial';
 }
 
+export interface DeflectionPoint {
+  position: number; // normalized position along the span (0 to 1)
+  deflection: number; // deflection value (m or in)
+}
+
 export interface CalculationResult {
   bendingMoment: number; // M = PL/8 (N·m or lb·ft)
   bendingStress: number; // σ = Mc/I (Pa or psi)
   maxBendingStress: number; // Maximum stress value
+  maxDeflection: number; // Maximum deflection at mid-span (m or in)
+  deflectionPoints: DeflectionPoint[]; // Deflection curve along the span
+  deflectionUnits: 'm' | 'in'; // Units for deflection values
   units: 'metric' | 'imperial';
   isValid: boolean;
   error?: string;
